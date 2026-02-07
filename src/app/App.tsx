@@ -51,6 +51,12 @@ const App = () => {
   const analyzer = useAudioAnalyzer(audioRef, sensitivity, intensity);
 
   useEffect(() => {
+    if (analyzer.error) {
+      setError(analyzer.error);
+    }
+  }, [analyzer.error]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onLoaded = () => setDuration(audio.duration);
