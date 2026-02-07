@@ -29,6 +29,7 @@ export const VisualizerCanvas = ({
 }: Props) => {
   const canvas2dRef = useRef<HTMLCanvasElement | null>(null);
   const canvasWebglRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const transitionRef = useRef<HTMLCanvasElement | null>(null);
   const presetRef = useRef<VisualPreset | null>(null);
   const lastTimeRef = useRef<number>(performance.now());
@@ -68,6 +69,8 @@ export const VisualizerCanvas = ({
       canvasWebgl.width = scaledWidth;
       canvasWebgl.height = scaledHeight;
     }
+    canvas.width = scaledWidth;
+    canvas.height = scaledHeight;
     if (transitionRef.current) {
       transitionRef.current.width = scaledWidth;
       transitionRef.current.height = scaledHeight;
