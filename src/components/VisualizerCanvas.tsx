@@ -27,6 +27,8 @@ export const VisualizerCanvas = ({
   onFpsUpdate,
   onAutoScale
 }: Props) => {
+  const canvas2dRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasWebglRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const transitionRef = useRef<HTMLCanvasElement | null>(null);
   const presetRef = useRef<VisualPreset | null>(null);
@@ -36,35 +38,47 @@ export const VisualizerCanvas = ({
   const frameTimes = useRef<number[]>([]);
 
   const renderContext = useMemo<PresetRenderContext | null>(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
     if (preset.type === '2d') {
+      const canvas = canvas2dRef.current;
+      if (!canvas) return null;
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
       return { type: '2d', ctx };
     }
+    const canvas = canvasWebglRef.current;
+    if (!canvas) return null;
     const gl = canvas.getContext('webgl2', { antialias: true, preserveDrawingBuffer: true });
     if (!gl) return null;
     return { type: 'webgl', gl, canvas };
   }, [preset]);
 
   const updateSize = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
+    const canvas2d = canvas2dRef.current;
+    const canvasWebgl = canvasWebglRef.current;
+    const parent = canvas2d?.parentElement ?? canvasWebgl?.parentElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const scaledWidth = Math.floor(rect.width * dpr * renderScale);
     const scaledHeight = Math.floor(rect.height * dpr * renderScale);
+    if (canvas2d) {
+      canvas2d.width = scaledWidth;
+      canvas2d.height = scaledHeight;
+    }
+    if (canvasWebgl) {
+      canvasWebgl.width = scaledWidth;
+      canvasWebgl.height = scaledHeight;
+    }
     canvas.width = scaledWidth;
     canvas.height = scaledHeight;
     if (transitionRef.current) {
       transitionRef.current.width = scaledWidth;
       transitionRef.current.height = scaledHeight;
     }
-    const resizeWidth = preset.type === 'webgl' ? canvas.width : rect.width;
-    const resizeHeight = preset.type === 'webgl' ? canvas.height : rect.height;
+    const activeCanvas = preset.type === 'webgl' ? canvasWebgl : canvas2d;
+    if (!activeCanvas) return;
+    const resizeWidth = preset.type === 'webgl' ? activeCanvas.width : rect.width;
+    const resizeHeight = preset.type === 'webgl' ? activeCanvas.height : rect.height;
     presetRef.current?.resize(resizeWidth, resizeHeight, dpr * renderScale);
   };
 
@@ -79,19 +93,21 @@ export const VisualizerCanvas = ({
   }, [renderScale]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas2d = canvas2dRef.current;
+    const canvasWebgl = canvasWebglRef.current;
+    const activeCanvas = preset.type === 'webgl' ? canvasWebgl : canvas2d;
+    if (!activeCanvas) return;
 
     const instance = preset.create();
     presetRef.current?.dispose();
     presetRef.current = instance;
 
-    const parent = canvas.parentElement;
+    const parent = activeCanvas.parentElement;
     const rect = parent?.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     instance.init({
-      width: preset.type === 'webgl' ? canvas.width : rect?.width ?? canvas.width,
-      height: preset.type === 'webgl' ? canvas.height : rect?.height ?? canvas.height,
+      width: preset.type === 'webgl' ? activeCanvas.width : rect?.width ?? activeCanvas.width,
+      height: preset.type === 'webgl' ? activeCanvas.height : rect?.height ?? activeCanvas.height,
       dpr: dpr * renderScale,
       colorTheme,
       motionBlur
@@ -102,7 +118,7 @@ export const VisualizerCanvas = ({
       const ctx = transitionRef.current.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, transitionRef.current.width, transitionRef.current.height);
-        ctx.drawImage(canvas, 0, 0, transitionRef.current.width, transitionRef.current.height);
+        ctx.drawImage(activeCanvas, 0, 0, transitionRef.current.width, transitionRef.current.height);
         transitionAlphaRef.current = 1;
         transitionRef.current.style.opacity = '1';
       }
@@ -148,7 +164,18 @@ export const VisualizerCanvas = ({
 
   return (
     <div className="visualizer-shell">
-      <canvas ref={canvasRef} className="visualizer-canvas" />
+      <canvas
+        ref={canvas2dRef}
+        className="visualizer-canvas"
+        data-active={preset.type === '2d'}
+        style={{ display: preset.type === '2d' ? 'block' : 'none' }}
+      />
+      <canvas
+        ref={canvasWebglRef}
+        className="visualizer-canvas"
+        data-active={preset.type === 'webgl'}
+        style={{ display: preset.type === 'webgl' ? 'block' : 'none' }}
+      />
       <canvas ref={transitionRef} className="visualizer-canvas" style={{ opacity: 0 }} />
     </div>
   );

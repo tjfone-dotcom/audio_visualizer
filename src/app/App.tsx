@@ -51,6 +51,12 @@ const App = () => {
   const analyzer = useAudioAnalyzer(audioRef, sensitivity, intensity);
 
   useEffect(() => {
+    if (analyzer.error) {
+      setError(analyzer.error);
+    }
+  }, [analyzer.error]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onLoaded = () => setDuration(audio.duration);
@@ -156,7 +162,7 @@ const App = () => {
       setError('녹화를 시작할 수 없습니다. 오디오가 준비되지 않았습니다.');
       return;
     }
-    const canvas = document.querySelector<HTMLCanvasElement>('.visualizer-canvas');
+    const canvas = document.querySelector<HTMLCanvasElement>('.visualizer-canvas[data-active="true"]');
     if (!canvas) {
       setError('캔버스를 찾을 수 없습니다.');
       return;
